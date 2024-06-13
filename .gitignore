@@ -1,5 +1,6 @@
 run_cpu.sh
 run_gpu.sh
+scripts/calculate.py
 
 raspa/
 results/

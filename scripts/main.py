@@ -14,7 +14,7 @@ conversion = mol / 1000. / ev_to_kj_mol
 def main(args):
     from ase.data import vdw_radii
 
-    mof_path = f'/storage/home/hhive1/schoi420/data/data/MOFs/core_relaxed_ddec/{args.framework}.cif'
+    mof_path = f'{args.home_dir}/data/MOFs/core_relaxed_ddec/{args.framework}.cif'
     ads_path = f'scripts/data/{args.adsorbate}.xyz'
     atoms_frame = read(mof_path)
     atoms_ads = read(ads_path)
@@ -63,8 +63,8 @@ def main(args):
     if args.FF == 'classicalFF':
         model = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = False, vdw_cutoff = args.vdw_cutoff, charge = charge, device = args.device)
     else:
-        config_path = f'/storage/home/hhive1/schoi420/data/github/ocp/configs/odac/s2ef/{args.FF}.yml'
-        checkpoint_path = f'/storage/home/hhive1/schoi420/data/github/ocp/checkpoints/odac/s2ef/{args.FF}.pt'
+        config_path = f'{args.home_dir}/github/ocp/configs/odac/s2ef/{args.FF}.yml'
+        checkpoint_path = f'{args.home_dir}/github/ocp/checkpoints/odac/s2ef/{args.FF}.pt'
         if args.device == 'cpu':
             cpu = True
         else:
@@ -96,6 +96,7 @@ if __name__ == "__main__":
     parser.add_argument("--print-every", default = 1000, type = int)
     parser.add_argument("--minimum-inner-steps", default = 20, type = int)
     parser.add_argument("--continue-sim", action = 'store_true')
+    parser.add_argument("--home-dir", default = '.', type = str)
 
     args = parser.parse_args()
     main(args)
