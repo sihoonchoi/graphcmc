@@ -33,7 +33,7 @@ class GCMC():
 
         if not os.path.exists('results'):
             os.mkdir('results')
-        self.job_id = f'{args.framework}_{args.adsorbate}_{self.T}K_{int(self.P):07d}Pa_{args.FF}_test'
+        self.job_id = f'{args.framework}_{args.adsorbate}_{self.T}K_{int(self.P):07d}Pa_{args.FF}'
 
         if not self.continue_sim:
             if os.path.isdir(f'results/{self.job_id}'):
