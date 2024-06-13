@@ -1,0 +1,8 @@
+run_cpu.sh
+run_gpu.sh
+
+raspa/
+results/
+outputs/
+tests/
+
