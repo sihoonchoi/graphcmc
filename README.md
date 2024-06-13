@@ -4,7 +4,7 @@ This repository contains Python scripts that implement GCMC simulations capable 
 
 ## Available force fields
 - Classical force fields
-  - Lennard-Jones + electorstatics
+  - Lennard-Jones + electrostatics
 - [MLFF](https://fair-chem.github.io/core/model_checkpoints.html#s2ef-models)
   - DimeNet++
   - SchNet
@@ -16,4 +16,4 @@ This repository contains Python scripts that implement GCMC simulations capable 
 ## Dependencies
 - NumPy
 - PyTorch
-- ocp
+- [ocp](https://github.com/Open-Catalyst-Project)
