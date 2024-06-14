@@ -41,8 +41,10 @@ def main(args):
     vdw_radii[12] = 1.0
 
     # Expand the unit cell based on the vdW cutoff
-    # supercell = np.ceil(2 * args.vdw_cutoff / atoms_frame.cell.cellpar()[:3])
-    supercell = np.array([3, 3, 3])
+    if args.framework == 'HAJMAH':
+        supercell = np.array([3, 3, 3])
+    else:
+        supercell = np.ceil(2 * args.vdw_cutoff / atoms_frame.cell.cellpar()[:3])
     atoms_supercell = atoms_frame.copy() * (int(supercell[0]), int(supercell[1]), int(supercell[2]))
 
     eos = PREOS.from_name(args.adsorbate)
