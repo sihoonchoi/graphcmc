@@ -6,4 +6,5 @@ raspa/
 results/
 outputs/
 tests/
+scripts/__pycache__/
 
