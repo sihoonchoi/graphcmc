@@ -31,15 +31,27 @@ def _random_rotation(pos, circlefrac = 1.0):
     phi = phi * 2.0 * np.pi  # For direction of pole deflection.
     z = z * 2.0 * circlefrac  # For magnitude of pole deflection.
 
-    r = np.sqrt(z)
-    V = (np.sin(phi) * r,
-         np.cos(phi) * r,
-         np.sqrt(2.0 - z))
+    # r = np.sqrt(z)
+    # V = (np.sin(phi) * r,
+    #      np.cos(phi) * r,
+    #      np.sqrt(2.0 - z))
 
-    st = np.sin(theta)
-    ct = np.cos(theta)
-    R = np.array(((ct, st, 0), (-st, ct, 0), (0, 0, 1)))
-    M = (np.outer(V, V) - np.eye(3)).dot(R)
+    # st = np.sin(theta)
+    # ct = np.cos(theta)
+    # R = np.array(((ct, st, 0), (-st, ct, 0), (0, 0, 1)))
+    # M = (np.outer(V, V) - np.eye(3)).dot(R)
+    
+    R1 = np.sqrt(1 - z)
+    R2 = np.sqrt(z)
+
+    U0 = np.cos(phi) * R2
+    U1 = np.sin(theta) * R1
+    U2 = np.cos(theta) * R1
+    U3 = np.sin(phi) * R2
+    coefI = 2.0 * U0**2 - 1.0
+    M = np.array([[coefI + 2.0 * U1**2, 2.0 * U1 * U2 - 2.0 * U0 * U3, 2.0 * U1 * U3 + 2.0 * U0 * U2],
+                  [2.0 * U1 * U2 + 2.0 * U0 * U3, 2.0 * U0 + 2.0 * U2**2, 2.0 * U2 * U3 - 2.0 * U0 * U1],
+                  [2.0 * U3 * U1 - 2.0 * U0 * U2, 2 * U3 * U2 + 2.0 * U0 * U1, coefI + 2 * U3**2]])
     pos = np.einsum('ib,ab->ia', pos, M)
     return pos + com
 
