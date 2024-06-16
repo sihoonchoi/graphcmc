@@ -29,7 +29,7 @@ def _random_rotation(pos, circlefrac = 1.0):
 
     theta = theta * 2.0 * circlefrac * np.pi  # Rotation about the pole (Z).
     phi = phi * 2.0 * np.pi  # For direction of pole deflection.
-    z = z * 2.0 * circlefrac  # For magnitude of pole deflection.
+    z = z * circlefrac  # For magnitude of pole deflection.
 
     # r = np.sqrt(z)
     # V = (np.sin(phi) * r,
