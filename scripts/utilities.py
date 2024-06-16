@@ -19,7 +19,7 @@ EV_TO_KJ_MOL = 96.48530749925793
 MOL          = 6.02214076e23
 J_TO_EV      = MOL / 1000.0 / EV_TO_KJ_MOL
 
-def _random_rotation(pos, circlefrac = 1.0):
+def _random_rotation(pos):
     # Translate to origin
     com = np.average(pos, axis=0)
     pos -= com
@@ -27,20 +27,9 @@ def _random_rotation(pos, circlefrac = 1.0):
     randnums = np.random.uniform(size = (3,))
     theta, phi, z = randnums
 
-    theta = theta * 2.0 * circlefrac * np.pi  # Rotation about the pole (Z).
+    theta = theta * 2.0 * np.pi  # Rotation about the pole (Z).
     phi = phi * 2.0 * np.pi  # For direction of pole deflection.
-    z = z * circlefrac  # For magnitude of pole deflection.
 
-    # r = np.sqrt(z)
-    # V = (np.sin(phi) * r,
-    #      np.cos(phi) * r,
-    #      np.sqrt(2.0 - z))
-
-    # st = np.sin(theta)
-    # ct = np.cos(theta)
-    # R = np.array(((ct, st, 0), (-st, ct, 0), (0, 0, 1)))
-    # M = (np.outer(V, V) - np.eye(3)).dot(R)
-    
     R1 = np.sqrt(1 - z)
     R2 = np.sqrt(z)
 
@@ -50,8 +39,8 @@ def _random_rotation(pos, circlefrac = 1.0):
     U3 = np.sin(phi) * R2
     coefI = 2.0 * U0**2 - 1.0
     M = np.array([[coefI + 2.0 * U1**2, 2.0 * U1 * U2 - 2.0 * U0 * U3, 2.0 * U1 * U3 + 2.0 * U0 * U2],
-                  [2.0 * U1 * U2 + 2.0 * U0 * U3, 2.0 * U0 + 2.0 * U2**2, 2.0 * U2 * U3 - 2.0 * U0 * U1],
-                  [2.0 * U3 * U1 - 2.0 * U0 * U2, 2 * U3 * U2 + 2.0 * U0 * U1, coefI + 2 * U3**2]])
+                  [2.0 * U1 * U2 + 2.0 * U0 * U3, coefI + 2.0 * U2**2, 2.0 * U2 * U3 - 2.0 * U0 * U1],
+                  [2.0 * U3 * U1 - 2.0 * U0 * U2, 2 * U3 * U2 + 2.0 * U0 * U1, coefI + 2.0 * U3**2]])
     pos = np.einsum('ib,ab->ia', pos, M)
     return pos + com
 
