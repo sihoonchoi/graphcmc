@@ -152,7 +152,7 @@ class GCMC():
                         i_ads = np.random.randint(self.Z_ads)
                         atoms_trial = self.atoms.copy()
                         pos = atoms_trial.get_positions()
-                        pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)] = _random_rotation(pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)], circlefrac = 1.0)
+                        pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)] = _random_rotation(pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)])
                         atoms_trial.set_positions(pos)
                         if self.model.hybrid and vdw_overlap(atoms_trial, self.vdw, self.n_frame, self.n_ads, i_ads):
                             e_trial = 10**10
