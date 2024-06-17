@@ -7,9 +7,6 @@ from gcmc import GCMC
 from utilities import PREOS, forcefield
 
 warnings.simplefilter('ignore')
-ev_to_kj_mol = 96.48530749925793
-mol = 6.02214076e23
-conversion = mol / 1000. / ev_to_kj_mol
 
 def main(args):
     from ase.data import vdw_radii
