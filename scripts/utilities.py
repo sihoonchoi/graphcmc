@@ -21,7 +21,7 @@ J_TO_EV      = MOL / 1000.0 / EV_TO_KJ_MOL
 
 def _random_rotation(pos):
     # Translate to origin
-    com = np.average(pos, axis=0)
+    com = np.average(pos, axis = 0)
     pos -= com
 
     randnums = np.random.uniform(size = (3,))

@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 
 from ase.io import read, write
-from utilities import _random_rotation, _random_position, vdw_overlap
+from utilities import _random_translation, _random_rotation, _random_position, vdw_overlap
 
 BOLTZMANN    = 1.380649e-23
 
@@ -132,9 +132,9 @@ class GCMC():
                         # pos = atoms_trial.get_positions()
                         # pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)] += 0.5 * (np.random.rand(3) - 0.5)
                         # atoms_trial.set_positions(pos)
-                        sca_pos = atoms_trial.get_scaled_positions()
-                        sca_pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)] += np.random.rand(3) - 0.5
-                        atoms_trial.set_scaled_positions(sca_pos)
+                        pos = atoms_trial.get_positions()
+                        pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)] = _random_translation(pos[self.n_frame + self.n_ads * i_ads : self.n_frame + self.n_ads * (i_ads + 1)], atoms_trial.get_cell())
+                        atoms_trial.set_positions(pos)
                         if self.model.hybrid and vdw_overlap(atoms_trial, self.vdw, self.n_frame, self.n_ads, i_ads):
                             e_trial = 10**10
                         else:
