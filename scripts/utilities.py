@@ -289,14 +289,17 @@ class PREOS(EOS):
 
 
 class forcefield():
-    def __init__(self, frame, unitcell, ads, hybrid = False, mlff = None, vdw_cutoff = 14.0, charge = True, device = 'cpu'):
+    def __init__(self, frame, unitcell, ads, hybrid = False, mlff = None, vdw_cutoff = 14.0, tail_correction = True, charge = True, device = 'cpu'):
         self.frame = frame
         self.unitcell = unitcell
         self.ads = ads
         self.n_frame_atoms = len(self.frame)
         self.n_ads_atoms = len(ads)
+        self.V = np.linalg.det(self.frame.cell[:])
+
         self.hybrid = hybrid
         self.vdw_cutoff = vdw_cutoff
+        self.tail_correction = tail_correction
         self.charge = charge
         self.device = device
 
@@ -308,9 +311,26 @@ class forcefield():
 
         self.ads_params = np.array([[self.params[s]['sigma'], self.params[s]['epsilon']] for s in self.ads.get_chemical_symbols()])
 
+    def get_tail_correction(self, old_elements, new_elements, idx, tail_correction = True):
+        if tail_correction:
+            corrections = []
+            for elements in [old_elements, new_elements]:
+                symbols, counts = np.unique(elements, return_counts = True)
+
+                U_tail = 0
+                for s, c in zip(symbols, counts):
+                    for y, u in zip(symbols, counts):
+                        epsilon = np.sqrt(self.params[s]['epsilon'] * self.params[y]['epsilon'])
+                        sigma = (self.params[s]['sigma'] + self.params[y]['sigma']) / 2.
+                        U_tail += 2 * np.pi / self.V * c * u * 4 / 3 * epsilon * sigma**3 * (((sigma / self.vdw_cutoff)**9) / 3 - (sigma / self.vdw_cutoff)**3)
+                corrections.append(U_tail)
+            return (corrections[1] - corrections[0]) * BOLTZMANN
+        else:
+            return 0
+
     def get_potential_energy(self, new_atoms, old_atoms, old_e, i_ads):
-        if self.n_frame_atoms == len(new_atoms):
-            return 0, 0, 0, 0
+        if self.n_frame_atoms == len(new_atoms) or old_atoms is None:
+            return 0
         
         else:
             if self.hybrid:
@@ -341,7 +361,7 @@ class forcefield():
                         ml += temp_atoms.get_potential_energy() / J_TO_EV
 
                         if self.n_frame_atoms == len(old_atoms):
-                            return old_e + ml + vdw + ewald, ml, vdw, ewald
+                            return old_e + ml + vdw + ewald
 
                     wo_ads_idx = torch.tensor(np.arange(len(old_atoms))[start_idx:], dtype = torch.int32, device = self.device)
                     for i in range(self.n_ads_atoms):
@@ -358,11 +378,12 @@ class forcefield():
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw += (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
+                    vdw += self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald += ewaldsum(new_atoms, new_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
 
-                    return old_e + ml + vdw + ewald, ml, vdw, ewald
+                    return old_e + ml + vdw + ewald
 
                 # Deletion
                 elif len(old_atoms) > len(new_atoms):
@@ -398,11 +419,12 @@ class forcefield():
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw -= (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
+                    vdw -= self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald -= ewaldsum(old_atoms, old_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
 
-                    return old_e + ml + vdw + ewald, ml, vdw, ewald
+                    return old_e + ml + vdw + ewald
                     
                 # Rotation or translation
                 else:
@@ -430,7 +452,7 @@ class forcefield():
                         ml += temp_atoms.get_potential_energy() / J_TO_EV
 
                         if self.n_frame_atoms + self.n_ads_atoms == len(new_atoms):
-                            return old_e + ml + vdw + ewald, ml, vdw, ewald
+                            return old_e + ml + vdw + ewald
 
                     wo_ads_idx = torch.tensor(list(np.arange(len(old_atoms))[start_idx:self.n_frame_atoms + i_ads * self.n_ads_atoms]) + list(np.arange(len(old_atoms))[self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms:]), dtype = torch.int32, device = self.device)
                     for i in range(self.n_ads_atoms):
@@ -459,12 +481,13 @@ class forcefield():
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw += (4 * mixing_epsilon * ((mixing_sigma / new_dist).pow(12) - (mixing_sigma / new_dist).pow(6))).sum().item() * BOLTZMANN
+                    vdw += self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald -= ewaldsum(old_atoms, old_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
                         ewald += ewaldsum(new_atoms, new_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
 
-                    return old_e + ml + vdw + ewald, ml, vdw, ewald
+                    return old_e + ml + vdw + ewald
 
 
 class ewaldsum(object):

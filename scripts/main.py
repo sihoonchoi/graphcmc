@@ -60,7 +60,7 @@ def main(args):
     print(f'fugacity: {fugacity}\n')
 
     if args.FF == 'classicalFF':
-        model = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = False, vdw_cutoff = args.vdw_cutoff, charge = charge, device = args.device)
+        ff = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = False, vdw_cutoff = args.vdw_cutoff, tail_correction = not args.tail_correction_off, charge = charge, device = args.device)
     else:
         config_path = f'{args.home_dir}/github/ocp/configs/odac/s2ef/{args.FF}.yml'
         checkpoint_path = f'{args.home_dir}/github/ocp/checkpoints/odac/s2ef/{args.FF}.pt'
@@ -69,9 +69,9 @@ def main(args):
         else:
             cpu = False
         mlff = OCPCalculator(config_yml = config_path, checkpoint_path = checkpoint_path, cpu = cpu)
-        model = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = True, mlff = mlff, vdw_cutoff = args.vdw_cutoff, charge = charge, device = args.device)
+        ff = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = True, mlff = mlff, vdw_cutoff = args.vdw_cutoff, tail_correction = not args.tail_correction_off, charge = charge, device = args.device)
 
-    gcmc = GCMC(args, model, atoms_supercell, atoms_ads, fugacity, vdw_radii)
+    gcmc = GCMC(args, ff, atoms_supercell, atoms_ads, fugacity, vdw_radii)
     if not args.continue_sim:
         loading = gcmc.run(args.initialization_cycle, initialize = True)
     if args.cycle:
@@ -90,6 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--P", required = True, type = float)
     parser.add_argument("--FF", required = True, type = str)
     parser.add_argument("--vdw-cutoff", default = 14.0, type = float)
+    parser.add_argument("--tail-correction-off", action = 'store_true')
     parser.add_argument("--framework-charge-off", action = 'store_true')
     parser.add_argument("--device", default = 'cpu', type = str)
     parser.add_argument("--print-every", default = 1000, type = int)
