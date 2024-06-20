@@ -4,7 +4,7 @@ import warnings
 from ase.io import read
 from ocpmodels.common.relaxation.ase_utils import OCPCalculator
 from gcmc import GCMC
-from utilities import PREOS, forcefield
+from utilities import PREOS, forcefield, compute_supercell_size
 
 warnings.simplefilter('ignore')
 
@@ -38,11 +38,8 @@ def main(args):
     vdw_radii[12] = 1.0
 
     # Expand the unit cell based on the vdW cutoff
-    if args.framework == 'HAJMAH':
-        supercell = np.array([3, 3, 3])
-    else:
-        supercell = np.ceil(2 * args.vdw_cutoff / atoms_frame.cell.cellpar()[:3])
-    atoms_supercell = atoms_frame.copy() * (int(supercell[0]), int(supercell[1]), int(supercell[2]))
+    x, y, z = compute_supercell_size(atoms_frame.cell, args.vdw_cutoff)
+    atoms_supercell = atoms_frame.copy() * (x, y, z)
 
     eos = PREOS.from_name(args.adsorbate)
     fugacity = eos.calculate_fugacity(args.T, args.P)
@@ -77,7 +74,7 @@ def main(args):
     if args.cycle:
         loading = gcmc.run(args.cycle)
     
-    print(f'loading: {(loading / supercell.prod()):.10f} molecule per unit cell')
+    print(f'loading: {(loading / x / y / z):.10f} molecule per unit cell')
 
 if __name__ == "__main__":
     import argparse

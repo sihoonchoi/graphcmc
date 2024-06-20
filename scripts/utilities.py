@@ -19,6 +19,25 @@ EV_TO_KJ_MOL = 96.48530749925793
 MOL          = 6.02214076e23
 J_TO_EV      = MOL / 1000.0 / EV_TO_KJ_MOL
 
+def compute_supercell_size(cell, cutoff):
+    a, b, c, alpha, beta, gamma = cell.cellpar()
+
+    alpha_rad = np.radians(alpha)
+    beta_rad = np.radians(beta)
+    gamma_rad = np.radians(gamma)
+
+    volume = np.linalg.det(cell)
+
+    da = volume / (b * c * np.sin(alpha_rad))
+    db = volume / (a * c * np.sin(beta_rad))
+    dc = volume / (a * b * np.sin(gamma_rad))
+
+    na = int(np.ceil(2 * cutoff / da))
+    nb = int(np.ceil(2 * cutoff / db))
+    nc = int(np.ceil(2 * cutoff / dc))
+
+    return na, nb, nc
+
 def _random_rotation(pos):
     # Translate to origin
     com = np.average(pos, axis = 0)
@@ -311,20 +330,17 @@ class forcefield():
 
         self.ads_params = np.array([[self.params[s]['sigma'], self.params[s]['epsilon']] for s in self.ads.get_chemical_symbols()])
 
-    def get_tail_correction(self, old_elements, new_elements, idx, tail_correction = True):
+    def get_tail_correction(self, elements, start_idx, tail_correction = True):
         if tail_correction:
-            corrections = []
-            for elements in [old_elements, new_elements]:
-                symbols, counts = np.unique(elements, return_counts = True)
+            symbols, counts = np.unique(elements[start_idx:], return_counts = True)
 
-                U_tail = 0
-                for s, c in zip(symbols, counts):
-                    for y, u in zip(symbols, counts):
-                        epsilon = np.sqrt(self.params[s]['epsilon'] * self.params[y]['epsilon'])
-                        sigma = (self.params[s]['sigma'] + self.params[y]['sigma']) / 2.
-                        U_tail += 2 * np.pi / self.V * c * u * 4 / 3 * epsilon * sigma**3 * (((sigma / self.vdw_cutoff)**9) / 3 - (sigma / self.vdw_cutoff)**3)
-                corrections.append(U_tail)
-            return (corrections[1] - corrections[0]) * BOLTZMANN
+            U_tail = 0
+            for s, c in zip(symbols, counts):
+                for y, u in zip(symbols, counts):
+                    epsilon = np.sqrt(self.params[s]['epsilon'] * self.params[y]['epsilon'])
+                    sigma = (self.params[s]['sigma'] + self.params[y]['sigma']) / 2.
+                    U_tail += 2 * np.pi / self.V * c * u * 4 / 3 * epsilon * sigma**3 * (((sigma / self.vdw_cutoff)**9) / 3 - (sigma / self.vdw_cutoff)**3)
+            return U_tail * BOLTZMANN
         else:
             return 0
 
@@ -344,12 +360,16 @@ class forcefield():
                 old_initial_charges = torch.from_numpy(np.array(old_atoms.get_initial_charges())).float().to(self.device)
                 new_initial_charges = torch.from_numpy(np.array(new_atoms.get_initial_charges())).float().to(self.device)
 
+                ml = 0
+                vdw = 0
+                ewald = 0
+
+                old_tail = self.get_tail_correction(old_chemical_symbols, start_idx, self.tail_correction)
+                new_tail = self.get_tail_correction(new_chemical_symbols, start_idx, self.tail_correction)
+                vdw += new_tail - old_tail
+
                 # Insertion
                 if len(old_atoms) < len(new_atoms):
-                    ml = 0
-                    vdw = 0
-                    ewald = 0
-
                     if self.hybrid:
                         temp_ads = new_atoms[-(self.n_ads_atoms):].copy()
                         temp_ads.set_cell(self.unitcell.cell)
@@ -373,12 +393,11 @@ class forcefield():
                         dist = dist[dist < self.vdw_cutoff]
 
                         if dist.shape[0]:
-                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[atoms_idx.cpu()]], dtype = torch.float32, device = self.device)
+                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
                             mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw += (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
-                    vdw += self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald += ewaldsum(new_atoms, new_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
@@ -389,10 +408,6 @@ class forcefield():
                 elif len(old_atoms) > len(new_atoms):
                     if len(new_atoms) == self.n_frame_atoms:
                         return 0, 0, 0, 0
-                    
-                    ml = 0
-                    vdw = 0
-                    ewald = 0
 
                     if self.hybrid:
                         temp_ads = old_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
@@ -414,12 +429,11 @@ class forcefield():
                         dist = dist[dist < self.vdw_cutoff]
                         
                         if dist.shape[0]:
-                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[atoms_idx.cpu()]], dtype = torch.float32, device = self.device)
+                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
                             mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw -= (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
-                    vdw -= self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald -= ewaldsum(old_atoms, old_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
@@ -428,10 +442,6 @@ class forcefield():
                     
                 # Rotation or translation
                 else:
-                    ml = 0
-                    vdw = 0
-                    ewald = 0
-
                     if self.hybrid:
                         temp_ads_delete = old_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
                         temp_ads_delete.set_cell(self.unitcell.cell)
@@ -464,7 +474,7 @@ class forcefield():
                         old_dist = old_dist[old_dist < self.vdw_cutoff]
 
                         if old_dist.shape[0]:
-                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[old_atoms_idx.cpu()]], dtype = torch.float32, device = self.device)
+                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[old_atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
                             mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
@@ -476,12 +486,11 @@ class forcefield():
                         new_dist = new_dist[new_dist < self.vdw_cutoff]
 
                         if new_dist.shape[0]:
-                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in new_chemical_symbols[new_atoms_idx.cpu()]], dtype = torch.float32, device = self.device)
+                            params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in new_chemical_symbols[new_atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
                             mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
                             mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                             vdw += (4 * mixing_epsilon * ((mixing_sigma / new_dist).pow(12) - (mixing_sigma / new_dist).pow(6))).sum().item() * BOLTZMANN
-                    vdw += self.get_tail_correction(old_chemical_symbols, new_chemical_symbols, wo_ads_idx.cpu().numpy(), self.tail_correction)
 
                     if self.charge:
                         ewald -= ewaldsum(old_atoms, old_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
