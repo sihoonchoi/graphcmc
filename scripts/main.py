@@ -1,5 +1,5 @@
-import numpy as np
 import warnings
+import os
 
 from ase.io import read
 from ocpmodels.common.relaxation.ase_utils import OCPCalculator
@@ -12,6 +12,8 @@ def main(args):
     from ase.data import vdw_radii
 
     mof_path = f'{args.home_dir}/data/MOFs/core_relaxed_ddec/{args.framework}.cif'
+    if not os.path.isfile(mof_path):
+        mof_path = f'{args.home_dir}/data/MOFs/numat_modified/{args.framework}.cif'
     ads_path = f'scripts/data/{args.adsorbate}.xyz'
     atoms_frame = read(mof_path)
     atoms_ads = read(ads_path)
