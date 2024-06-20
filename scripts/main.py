@@ -21,9 +21,10 @@ def main(args):
         with open(mof_path, 'r') as f:
             lines = f.readlines()
         charges_frame = []
-        for i in range(lines.index(' _atom_site_charge\n') + 1, len(lines)):
-            charges_frame.append(float(lines[i].strip().split()[-1]))
-        atoms_frame.set_initial_charges(charges_frame)
+        if ' _atom_site_charge\n' in lines:
+            for i in range(lines.index(' _atom_site_charge\n') + 1, len(lines)):
+                charges_frame.append(float(lines[i].strip().split()[-1]))
+            atoms_frame.set_initial_charges(charges_frame)
 
         if args.adsorbate == 'co2':
             atoms_ads.set_initial_charges([0.70, -0.35, -0.35])
