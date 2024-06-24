@@ -2,7 +2,9 @@ import os
 import shutil
 import numpy as np
 
-from ase.io import read, write
+from ase.io import read
+from pymatgen.io.ase import AseAtomsAdaptor
+from pymatgen.io.cif import CifWriter
 from utilities import _random_translation, _random_rotation, _random_position, vdw_overlap
 
 BOLTZMANN    = 1.380649e-23
@@ -66,12 +68,17 @@ class GCMC():
             adsorption_energy = []
             already_run = 0
         else:
-            self.atoms = read(f'results/{self.job_id}/last_movie.cif')
             uptake = list(np.load(f'results/{self.job_id}/uptake.npy'))
             adsorption_energy = list(np.load(f'results/{self.job_id}/adsorption_energy.npy'))
             already_run = len(uptake)
             self.Z_ads = uptake[-1]
             self.E = adsorption_energy[-1]
+            last_ads_pos = np.load(f'results/{self.job_id}/last_adsorbate_positions.npy')
+            self.atoms = self.atoms_frame.copy()
+            for i in range(self.Z_ads):
+                temp_ads = atoms_ads.copy()
+                temp_ads.set_positions(last_ads_pos[i * self.n_ads:(i + 1) * self.n_ads])
+                self.atoms += temp_ads
             print(f"Continuing the calculation from cycle {already_run + 1}: {N - already_run} cycles left")
 
         attempted = [0, 0, 0, 0]
@@ -158,19 +165,27 @@ class GCMC():
             if not initialize and (iteration + 1) % self.print_every == 0:
                 np.save(f'results/{self.job_id}/uptake.npy', np.array(uptake))
                 np.save(f'results/{self.job_id}/adsorption_energy.npy', np.array(adsorption_energy))
-                write(f'results/{self.job_id}/{iteration + 1:010d}.cif', self.atoms)
-                write(f'results/{self.job_id}/last_movie.cif', self.atoms)
+                np.save(f'results/{self.job_id}/last_adsorbate_positions.npy', self.atoms[-(self.Z_ads * self.n_ads):].get_positions())
+                structure = AseAtomsAdaptor.get_structure(self.atoms)
+                cifwriter = CifWriter(structure)
+                cifwriter.write_file(f'results/{self.job_id}/{iteration + 1:010d}.cif')
 
         if not initialize:
-            print('Attempted')
-            print(f'Insertion: {attempted[0]}\nDeletion: {attempted[1]}\nTranslation: {attempted[2]}\nRotation: {attempted[3]}')
-            print('Accepted')
-            print(f'Insertion: {accepted[0]}\nDeletion: {accepted[1]}\nTranslation: {accepted[2]}\nRotation: {accepted[3]}')
-            print('Acceptance Ratio')
-            print(f'Insertion: {accepted[0] / attempted[0] * 100:.5f}%\nDeletion: {accepted[1] / attempted[1] * 100:.5f}%\nTranslation: {accepted[2] / attempted[2] * 100:.5f}%\nRotation: {accepted[3] / attempted[3] * 100:.5f}%')
+            print(f'Insertion\nAttempted: {attempted[0]}\nAccepted: {accepted[0]}')
+            if attempted[0]:
+                print(f'Acceptance Ratio: {accepted[0] / attempted[0] * 100:.5f}%')
+            print(f'Deletion\nAttempted: {attempted[1]}\nAccepted: {accepted[1]}')
+            if attempted[1]:
+                print(f'Acceptance Ratio: {accepted[1] / attempted[1] * 100:.5f}%')
+            print(f'Rotation\nAttempted: {attempted[2]}\nAccepted: {accepted[2]}')
+            if attempted[2]:
+                print(f'Acceptance Ratio: {accepted[2] / attempted[2] * 100:.5f}%')
+            print(f'Translation\nAttempted: {attempted[3]}\nAccepted: {accepted[3]}')
+            if attempted[3]:
+                print(f'Acceptance Ratio: {accepted[3] / attempted[3] * 100:.5f}%')
 
         np.save(f'results/{self.job_id}/uptake.npy', np.array(uptake))
         np.save(f'results/{self.job_id}/adsorption_energy.npy', np.array(adsorption_energy))
-        write(f'results/{self.job_id}/last_movie.cif', self.atoms)
+        np.save(f'results/{self.job_id}/last_adsorbate_positions.npy', self.atoms[-(self.Z_ads * self.n_ads):].get_positions())
 
         return np.array(uptake).mean()
