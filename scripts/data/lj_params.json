@@ -246,5 +246,17 @@
     "Os": {
         "sigma": 3.05,
         "epsilon": 79.0
+    },
+    "At": {
+        "sigma": 89.633,
+        "epsilon": 3.097
+    },
+    "Fr": {
+        "sigma": 0.0,
+        "epsilon": 0.0
+    },
+    "Pa": {
+        "sigma": 0.0,
+        "epsilon": 0.0
     }
 }
