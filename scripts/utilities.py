@@ -373,7 +373,7 @@ class forcefield():
                     if self.hybrid:
                         temp_ads = new_atoms[-(self.n_ads_atoms):].copy()
                         temp_ads.set_cell(self.unitcell.cell)
-                        adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.unitcell.cell
+                        adjusted_pos = (temp_ads.get_scaled_positions()) @ self.unitcell.cell
                         temp_ads = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
 
                         temp_atoms = self.unitcell.copy() + temp_ads
@@ -412,7 +412,7 @@ class forcefield():
                     if self.hybrid:
                         temp_ads = old_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
                         temp_ads.set_cell(self.unitcell.cell)
-                        adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.unitcell.cell
+                        adjusted_pos = (temp_ads.get_scaled_positions()) @ self.unitcell.cell
                         temp_ads = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
 
                         temp_atoms = self.unitcell.copy() + temp_ads
@@ -445,7 +445,7 @@ class forcefield():
                     if self.hybrid:
                         temp_ads_delete = old_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
                         temp_ads_delete.set_cell(self.unitcell.cell)
-                        adjusted_pos = (temp_ads_delete.get_scaled_positions() % 1) @ self.unitcell.cell
+                        adjusted_pos = (temp_ads_delete.get_scaled_positions()) @ self.unitcell.cell
                         temp_ads_delete = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
 
                         temp_atoms = self.unitcell.copy() + temp_ads_delete
@@ -454,7 +454,7 @@ class forcefield():
 
                         temp_ads_insert = new_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
                         temp_ads_insert.set_cell(self.unitcell.cell)
-                        adjusted_pos = (temp_ads_insert.get_scaled_positions() % 1) @ self.unitcell.cell
+                        adjusted_pos = (temp_ads_insert.get_scaled_positions()) @ self.unitcell.cell
                         temp_ads_insert = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
                         
                         temp_atoms = self.unitcell.copy() + temp_ads_insert

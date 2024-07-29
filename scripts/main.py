@@ -30,15 +30,12 @@ def main(args):
             atoms_ads.set_initial_charges([0.70, -0.35, -0.35])
         elif args.adsorbate == 'methane':
             atoms_ads.set_initial_charges([0.0])
+        elif args.adsorbate == 'h2o':
+            atoms_ads.set_initial_charges([0.0, 0.241, 0.241, -0.241, -0.241])
     charge = atoms_ads.get_initial_charges().any() or atoms_frame.get_initial_charges().any()
 
-    # C and O were renamed to Cs and Os to differentiate them from framework atoms during training
-    vdw_radii = vdw_radii.copy()
-    vdw_radii[76] = vdw_radii[8]
-    vdw_radii[55] = vdw_radii[6]
-
-    # Mg radius is set to 1.0 A
-    vdw_radii[12] = 1.0
+    # C and O in CO2 were renamed to Cs and Os to differentiate them from framework atoms
+    # H, O, and massless charge points were renamed to Fr, At, and Pa to differentiate them from framework atoms
 
     # Expand the unit cell based on the vdW cutoff
     x, y, z = compute_supercell_size(atoms_frame.cell, args.vdw_cutoff)
@@ -72,8 +69,7 @@ def main(args):
         ff = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = True, mlff = mlff, vdw_cutoff = args.vdw_cutoff, tail_correction = not args.tail_correction_off, charge = charge, device = args.device)
 
     gcmc = GCMC(args, ff, atoms_supercell, atoms_ads, fugacity, vdw_radii)
-    if not args.continue_sim:
-        loading = gcmc.run(args.initialization_cycle, initialize = True)
+    loading = gcmc.run(args.initialization_cycle, initialize = True)
     if args.cycle:
         loading = gcmc.run(args.cycle)
     
