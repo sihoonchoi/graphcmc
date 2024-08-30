@@ -27,12 +27,14 @@ To ensure a consistent environment for all contributors, it is recommended to se
 
 1. **Clone the repository**: If not already done, clone this repository to your local machine:
 
-`git clone https://github.com/yourusername/GraphMC.git\\cd GraphMC`
+```git clone https://github.com/yourusername/graphmc.git
+cd graphmc
+```
 
 2. **Create the Environment**: Run the following command to create a Conda environment from the `env.yml` file:
 
-`conda env create -f env.yml`
+```conda env create -f env.yml```
 
 3. **Activate the Environment**: Once the environment is created, activate it using:
 
-`conda activate graphmc`
+```conda activate graphmc```
