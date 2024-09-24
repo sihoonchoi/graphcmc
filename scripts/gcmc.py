@@ -5,6 +5,7 @@ import numpy as np
 from utilities import _random_translation, _random_rotation, _random_position
 
 BOLTZMANN    = 1.380649e-23
+MOL          = 6.02214076e23
 
 class GCMC():
     def __init__(self, args, forcefield, atoms_frame, atoms_ads, fugacity, vdw_radii):
@@ -27,13 +28,18 @@ class GCMC():
         self.FF = args.FF
 
         self.tail_correction = not args.tail_correction_off
+        self.energy_shift = args.energy_shift * 1000 / MOL
         self.print_every = args.print_every
         self.minimum_inner_steps = args.minimum_inner_steps
         self.continue_sim = args.continue_sim
 
         if not os.path.exists('results'):
             os.mkdir('results')
-        self.job_id = f'{args.framework}_{args.adsorbate}_{self.T}K_{int(self.P):07d}Pa_{args.FF}_test'
+        
+        if self.energy_shift:
+            self.job_id = f'{args.framework}_{self.adsorbate}_{self.T}K_{int(self.P):07d}Pa_{self.FF}_shift{args.energy_shift:.1f}'
+        else:
+            self.job_id = f'{args.framework}_{self.adsorbate}_{self.T}K_{int(self.P):07d}Pa_{self.FF}'
 
         if not self.continue_sim:
             if os.path.isdir(f'results/{self.job_id}'):
@@ -55,7 +61,7 @@ class GCMC():
         return np.random.rand() < acc
 
     def get_potential_energy(self, new_atoms, old_atoms = None, old_e = None, i_ads = None):
-        return self.forcefield.get_potential_energy(new_atoms, old_atoms, old_e, i_ads)
+        return self.forcefield.get_potential_energy(new_atoms, old_atoms, old_e, i_ads, shift = self.energy_shift)
 
     def run(self, N, initialize = False):
         atoms_ads = self.atoms_ads.copy()
@@ -179,10 +185,7 @@ class GCMC():
                     np.save(f'results/{self.job_id}/adsorption_energy.npy', np.array(adsorption_energy))
                     np.save(f'results/{self.job_id}/last_adsorbate_positions.npy', self.atoms[-(self.Z_ads * self.n_ads):].get_positions())
                     np.save(f'results/{self.job_id}/adsorbate_{iteration + 1:010d}.npy', self.atoms[-(self.Z_ads * self.n_ads):].get_positions())
-                    # structure = AseAtomsAdaptor.get_structure(self.atoms)
-                    # cifwriter = CifWriter(structure)
-                    # cifwriter.write_file(f'results/{self.job_id}/{iteration + 1:010d}.cif')
-
+                    
         if not initialize:
             print(f'Insertion\nAttempted: {attempted[0]}\nAccepted: {accepted[0]}')
             if attempted[0]:
