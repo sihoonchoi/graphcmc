@@ -4,7 +4,9 @@ import os
 from ase.io import read
 from ocpmodels.common.relaxation.ase_utils import OCPCalculator
 from gcmc import GCMC
-from utilities import PREOS, forcefield, compute_supercell_size
+from utilities import compute_supercell_size
+from eos import PREOS
+from forcefield import forcefield
 
 warnings.simplefilter('ignore')
 
@@ -93,6 +95,7 @@ if __name__ == "__main__":
     parser.add_argument("--minimum-inner-steps", default = 20, type = int)
     parser.add_argument("--continue-sim", action = 'store_true')
     parser.add_argument("--home-dir", default = '.', type = str)
+    parser.add_argument("--energy-shift", default = 0.0, type = float)
 
     args = parser.parse_args()
     main(args)
