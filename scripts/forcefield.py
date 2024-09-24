@@ -66,7 +66,7 @@ class forcefield():
             start_idx = self.n_frame_atoms
             temp_ads = atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
             temp_ads.set_cell(self.unitcell.cell)
-            adjusted_pos = (temp_ads.get_scaled_positions()) @ self.unitcell.cell
+            adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.unitcell.cell
             temp_ads = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
             
             temp_atoms = self.unitcell.copy() + temp_ads
@@ -81,17 +81,17 @@ class forcefield():
         for i in range(self.n_ads_atoms):
             ads_idx = self.n_frame_atoms + i_ads * self.n_ads_atoms + i
 
-            new_dist = atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
-            new_dist = torch.from_numpy(new_dist).float().to(self.device)
-            atoms_idx = wo_ads_idx[new_dist < self.vdw_cutoff]
-            new_dist = new_dist[new_dist < self.vdw_cutoff]
+            dist = atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
+            dist = torch.from_numpy(dist).float().to(self.device)
+            atoms_idx = wo_ads_idx[dist < self.vdw_cutoff]
+            dist = dist[dist < self.vdw_cutoff]
 
-            if new_dist.shape[0]:
+            if dist.shape[0]:
                 params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in chemical_symbols[atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
                 mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
                 mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
-                vdw += (4 * mixing_epsilon * ((mixing_sigma / new_dist).pow(12) - (mixing_sigma / new_dist).pow(6))).sum().item() * BOLTZMANN
+                vdw += (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
 
         ## Ewald summation
         if self.charge:
@@ -110,7 +110,7 @@ class forcefield():
             start_idx = self.n_frame_atoms
             temp_ads = atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
             temp_ads.set_cell(self.unitcell.cell)
-            adjusted_pos = (temp_ads.get_scaled_positions()) @ self.unitcell.cell
+            adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.unitcell.cell
             temp_ads = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
 
             temp_atoms = self.unitcell.copy() + temp_ads
@@ -119,24 +119,25 @@ class forcefield():
 
         ## Classical FF
         wo_ads_idx = torch.tensor(list(np.arange(len(atoms))[start_idx:self.n_frame_atoms + i_ads * self.n_ads_atoms]) + list(np.arange(len(atoms))[self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms:]), dtype = torch.int32, device = self.device)
-        for i in range(self.n_ads_atoms):
-            ads_idx = self.n_frame_atoms + i_ads * self.n_ads_atoms + i
-            
-            dist = atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
-            dist = torch.from_numpy(dist).float().to(self.device)
-            atoms_idx = wo_ads_idx[dist < self.vdw_cutoff]
-            dist = dist[dist < self.vdw_cutoff]
-            
-            if dist.shape[0]:
-                params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in chemical_symbols[atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
-                mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
-                mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
+        if wo_ads_idx.shape[0]:
+            for i in range(self.n_ads_atoms):
+                ads_idx = self.n_frame_atoms + i_ads * self.n_ads_atoms + i
+                
+                dist = atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
+                dist = torch.from_numpy(dist).float().to(self.device)
+                atoms_idx = wo_ads_idx[dist < self.vdw_cutoff]
+                dist = dist[dist < self.vdw_cutoff]
+                
+                if dist.shape[0]:
+                    params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in chemical_symbols[atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
+                    mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
+                    mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
-                vdw -= (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
+                    vdw -= (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
 
         ## Ewald summation
-        if self.charge:
-            ewald -= ewaldsum(atoms, initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
+            if self.charge:
+                ewald -= ewaldsum(atoms, initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
 
         return ml, vdw, ewald
 
