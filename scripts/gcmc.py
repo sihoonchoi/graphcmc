@@ -210,3 +210,20 @@ class GCMC():
         np.save(f'results/{self.job_id}/last_adsorbate_positions.npy', self.atoms[-(self.Z_ads * self.n_ads):].get_positions())
 
         return np.array(uptake).mean()
+    
+    def widom(self, N):
+        atoms_ads = self.atoms_ads.copy()
+        positions = []
+        energies = []
+        for iteration in range(N):
+            atoms_trial = self.atoms.copy() + atoms_ads
+            pos = atoms_trial.get_positions()
+            pos[-self.n_ads:] = _random_position(pos[-self.n_ads:], atoms_trial.get_cell())
+            atoms_trial.set_positions(pos)
+            e_trial = self.get_potential_energy(atoms_trial.copy(), self.atoms.copy(), 0, 0)
+
+            positions.append(list(pos))
+            energies.append(e_trial)
+
+        np.save(f'results/{self.job_id}/widom_positions.npy', np.array(positions)[:, -3:])
+        np.save(f'results/{self.job_id}/widom_energies.npy', np.array(energies) / 1000 * MOL)

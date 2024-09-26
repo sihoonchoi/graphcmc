@@ -28,11 +28,11 @@ def main(args):
                 charges_frame.append(float(lines[i].strip().split()[-1]))
             atoms_frame.set_initial_charges(charges_frame)
 
-        if args.adsorbate == 'co2':
+        if args.adsorbate.casefold() == 'co2':
             atoms_ads.set_initial_charges([0.70, -0.35, -0.35])
-        elif args.adsorbate == 'methane':
+        elif args.adsorbate.casefold() == 'methane':
             atoms_ads.set_initial_charges([0.0])
-        elif args.adsorbate == 'h2o':
+        elif args.adsorbate.casefold() == 'h2o':
             atoms_ads.set_initial_charges([0.0, 0.241, 0.241, -0.241, -0.241])
     charge = atoms_ads.get_initial_charges().any() or atoms_frame.get_initial_charges().any()
 
@@ -46,9 +46,9 @@ def main(args):
     eos = PREOS.from_name(args.adsorbate)
     fugacity = eos.calculate_fugacity(args.T, args.P)
     
-    print(f'FF: {args.FF}')
+    print(f'FF: {args.FF.casefold()}')
     print(f'framework: {args.framework}')
-    print(f'adsorbate: {args.adsorbate}')
+    print(f'adsorbate: {args.adsorbate.casefold()}')
     print(f'initialization: {args.initialization_cycle}')
     print(f'cycles: {args.cycle}')
     print(f'framework charge: {not args.framework_charge_off}')
@@ -56,14 +56,14 @@ def main(args):
     print()
     print(f'temperature: {args.T} K')
     print(f'pressure: {args.P} Pa')
-    print(f'fugacity: {fugacity}\n')
+    print(f'fugacity: {fugacity:.5f}\n')
 
-    if args.FF == 'classicalFF':
+    if args.FF.casefold() == 'uff':
         ff = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = False, vdw_cutoff = args.vdw_cutoff, tail_correction = not args.tail_correction_off, charge = charge, device = args.device)
     else:
         config_path = f'{args.home_dir}/github/ocp/configs/odac/s2ef/{args.FF}.yml'
         checkpoint_path = f'{args.home_dir}/github/ocp/checkpoints/odac/s2ef/{args.FF}.pt'
-        if args.device == 'cpu':
+        if args.device.casefold() == 'cpu':
             cpu = True
         else:
             cpu = False
@@ -71,15 +71,19 @@ def main(args):
         ff = forcefield(atoms_supercell, atoms_frame, atoms_ads, hybrid = True, mlff = mlff, vdw_cutoff = args.vdw_cutoff, tail_correction = not args.tail_correction_off, charge = charge, device = args.device)
 
     gcmc = GCMC(args, ff, atoms_supercell, atoms_ads, fugacity, vdw_radii)
-    loading = gcmc.run(args.initialization_cycle, initialize = True)
-    if args.cycle:
-        loading = gcmc.run(args.cycle)
-    
-    print(f'loading: {(loading / x / y / z):.10f} molecule per unit cell')
+    if args.simulation_type.casefold() == 'mc':
+        loading = gcmc.run(args.initialization_cycle, initialize = True)
+        if args.cycle:
+            loading = gcmc.run(args.cycle)
+
+        print(f'loading: {(loading / x / y / z):.10f} molecule per unit cell')
+    elif args.simulation_type.casefold() == 'widom':
+        gcmc.widom(args.cycle)
 
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument("--simulation-type", default = 'mc', type = str)
     parser.add_argument("--cycle", required = True, type = int)
     parser.add_argument("--initialization-cycle", default = 0, type = int)
     parser.add_argument("--framework", required = True, type = str)
