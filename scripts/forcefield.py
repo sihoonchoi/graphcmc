@@ -80,7 +80,7 @@ class forcefield():
         wo_ads_idx = torch.tensor(list(np.arange(len(atoms))[start_idx:self.n_frame_atoms + i_ads * self.n_ads_atoms]) + list(np.arange(len(atoms))[self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms:]), dtype = torch.int32, device = self.device)
         for i in range(self.n_ads_atoms):
             ads_idx = self.n_frame_atoms + i_ads * self.n_ads_atoms + i
-
+            
             dist = atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
             dist = torch.from_numpy(dist).float().to(self.device)
             atoms_idx = wo_ads_idx[dist < self.vdw_cutoff]
@@ -92,7 +92,7 @@ class forcefield():
                 mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
 
                 vdw += (4 * mixing_epsilon * ((mixing_sigma / dist).pow(12) - (mixing_sigma / dist).pow(6))).sum().item() * BOLTZMANN
-
+       
         ## Ewald summation
         if self.charge:
             ewald += ewaldsum(atoms, initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
@@ -162,12 +162,12 @@ class forcefield():
                 tail = new_tail - old_tail
 
                 # Insertion
-                if len(old_atoms) < len(new_atoms):
+                if len(new_atoms) > len(old_atoms):
                     ml, vdw, ewald = self.insertion(new_atoms, new_chemical_symbols, new_initial_charges, i_ads)
                     return old_e + ml + vdw + ewald + tail
 
                 # Deletion
-                elif len(old_atoms) > len(new_atoms):
+                elif len(new_atoms) < len(old_atoms):
                     if len(new_atoms) == self.n_frame_atoms:
                         return 0
                     
@@ -183,62 +183,6 @@ class forcefield():
                     new_e += ml + vdw + ewald
 
                     return new_e
-                
-                    # if self.hybrid:
-                    #     temp_ads_delete = old_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
-                    #     temp_ads_delete.set_cell(self.unitcell.cell)
-                    #     adjusted_pos = (temp_ads_delete.get_scaled_positions()) @ self.unitcell.cell
-                    #     temp_ads_delete = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
-
-                    #     temp_atoms = self.unitcell.copy() + temp_ads_delete
-                    #     temp_atoms.calc = self.model
-                    #     ml -= temp_atoms.get_potential_energy() / J_TO_EV
-
-                    #     temp_ads_insert = new_atoms[(self.n_frame_atoms + i_ads * self.n_ads_atoms):(self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms)].copy()
-                    #     temp_ads_insert.set_cell(self.unitcell.cell)
-                    #     adjusted_pos = (temp_ads_insert.get_scaled_positions()) @ self.unitcell.cell
-                    #     temp_ads_insert = Atoms(['C', 'O', 'O'], positions = adjusted_pos, cell = self.unitcell.cell, pbc = [True, True, True])
-                        
-                    #     temp_atoms = self.unitcell.copy() + temp_ads_insert
-                    #     temp_atoms.calc = self.model
-                    #     ml += temp_atoms.get_potential_energy() / J_TO_EV
-
-                    #     if self.n_frame_atoms + self.n_ads_atoms == len(new_atoms):
-                    #         return old_e + ml + vdw + ewald
-
-                    # wo_ads_idx = torch.tensor(list(np.arange(len(old_atoms))[start_idx:self.n_frame_atoms + i_ads * self.n_ads_atoms]) + list(np.arange(len(old_atoms))[self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms:]), dtype = torch.int32, device = self.device)
-                    # for i in range(self.n_ads_atoms):
-                    #     ads_idx = self.n_frame_atoms + i_ads * self.n_ads_atoms + i
-                        
-                    #     old_dist = old_atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
-                    #     old_dist = torch.from_numpy(old_dist).float().to(self.device)
-                    #     old_atoms_idx = wo_ads_idx[old_dist < self.vdw_cutoff]
-                    #     old_dist = old_dist[old_dist < self.vdw_cutoff]
-
-                    #     if old_dist.shape[0]:
-                    #         params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in old_chemical_symbols[old_atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
-                    #         mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
-                    #         mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
-
-                    #         vdw -= (4 * mixing_epsilon * ((mixing_sigma / old_dist).pow(12) - (mixing_sigma / old_dist).pow(6))).sum().item() * BOLTZMANN
-
-                    #     new_dist = new_atoms.get_distances(ads_idx, wo_ads_idx.cpu().numpy(), mic = True, vector = False)
-                    #     new_dist = torch.from_numpy(new_dist).float().to(self.device)
-                    #     new_atoms_idx = wo_ads_idx[new_dist < self.vdw_cutoff]
-                    #     new_dist = new_dist[new_dist < self.vdw_cutoff]
-
-                    #     if new_dist.shape[0]:
-                    #         params = torch.tensor([[self.params[o]['sigma'], self.params[o]['epsilon']] for o in new_chemical_symbols[new_atoms_idx.cpu().numpy()]], dtype = torch.float32, device = self.device)
-                    #         mixing_sigma = (params[:, 0] + self.ads_params[i][0]) / 2
-                    #         mixing_epsilon = torch.sqrt(params[:, 1] * self.ads_params[i][1])
-
-                    #         vdw += (4 * mixing_epsilon * ((mixing_sigma / new_dist).pow(12) - (mixing_sigma / new_dist).pow(6))).sum().item() * BOLTZMANN
-
-                    # if self.charge:
-                    #     ewald -= ewaldsum(old_atoms, old_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
-                    #     ewald += ewaldsum(new_atoms, new_initial_charges, wo_ads_idx, torch.tensor([self.n_frame_atoms + i_ads * self.n_ads_atoms + i for i in range(self.n_ads_atoms)], dtype = torch.int32, device = self.device), device = self.device).get_ewaldsum() / J_TO_EV
-
-                    # return old_e + ml + vdw + ewald
 
 
 class ewaldsum(object):
