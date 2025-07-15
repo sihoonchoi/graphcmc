@@ -43,3 +43,20 @@ conda env create -f env.yml
 ```bash
 conda activate graphcmc
 ```
+
+## Running GCMC Calculations
+
+```bash
+python scripts/main.py --cycle 100000 --initialization-cycle 10000 --framework CALF-20 --adsorbate co2 --pressure 1e4 --temperature 298.0 --FF eqv2_153M --device cuda --continue-sim
+```
+
+Command line arguments:
+- `--cycle`: Number of GCMC cycles
+- `--initialization-cycle`: Number of initialization cycles
+- `--framework`: Name of the adsorbent CIF file (e.g., `CALF-20.cif`)
+- `--adsorbate`: Name of the adsorbate XYZ file (e.g., `co2.xyz`)
+- `--pressure`: External pressure [Pa]
+- `--temperature`: Simulation temperature [K]
+- `--FF`: Name of the classical force field or MLFF
+- `--device`: Computation device, either `cpu` or `cuda`
+- `--continue-sim`: Include this flag to resume a simulation that was previously interrupted
