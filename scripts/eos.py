@@ -1,7 +1,6 @@
 import numpy as np
 
-BOLTZMANN    = 1.380649e-23
-PLANCK       = 1.0545718e-34
+from constants import BOLTZMANN, PLANCK
 
 class EOS(object):
     def __init__(self, mass = 0.0):

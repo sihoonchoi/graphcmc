@@ -1,0 +1,12 @@
+# Physical constants
+BOLTZMANN    = 1.380649e-23  # J/K
+AVOGADRO     = 6.02214076e23  # 1/mol
+PLANCK       = 1.0545718e-34
+AUTOA        = 0.529177249
+FELECT       = 2 * AUTOA * 13.605826
+
+# Conversion factors
+JOULE_TO_KJ_MOL = 1e-3 * AVOGADRO
+KJ_MOL_TO_J = 1e3 / AVOGADRO
+EV_TO_KJ_MOL = 96.48530749925793
+J_TO_EV      = AVOGADRO / 1000.0 / EV_TO_KJ_MOL
