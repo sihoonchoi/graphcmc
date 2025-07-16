@@ -1,6 +1,6 @@
 import numpy as np
 
-from constants import BOLTZMANN, PLANCK
+from graphcmc.utils.constants import BOLTZMANN, PLANCK
 
 class EOS(object):
     def __init__(self, mass = 0.0):

@@ -1,9 +1,3 @@
-run.sh
-scripts/calculate.py
-
-raspa/
-results/
-outputs/
-tests/
-scripts/__pycache__/
-
+**/__pycache__/
+*.py[cod]
+*.egg-info/
