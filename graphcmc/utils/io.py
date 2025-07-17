@@ -28,43 +28,70 @@ def load_atoms_and_charges(framework, ads, charge):
 
     return framework_atoms, ads_atoms
 
-def setup_result_directory(job_id, continue_sim):
-    result_dir = os.path.join(os.getcwd(), "results", job_id)
-    if not continue_sim:
+def setup_result_directory(result_dir, job_id, initialize = False, continue_sim = False):
+    import shutil
+    result_dir = os.path.join(os.getcwd(), result_dir, job_id)
+
+    if initialize and not continue_sim:
         if os.path.exists(result_dir):
-            for f in os.listdir(result_dir):
-                os.remove(os.path.join(result_dir, f))
-        else:
-            os.makedirs(result_dir)
+            shutil.rmtree(result_dir)
+
+    if not initialize and not continue_sim:
+        if os.path.exists(os.path.join(result_dir, 'stats.npy')):
+            os.remove(os.path.join(result_dir, 'stats.npy'))
+        if os.path.exists(os.path.join(result_dir, 'checkpoint.traj')):
+            os.remove(os.path.join(result_dir, 'checkpoint.traj'))
+        if os.path.exists(os.path.join(result_dir, 'trajectories')):
+            shutil.rmtree(os.path.join(result_dir, 'trajectories'))
+
+    os.makedirs(result_dir, exist_ok = True)
     return result_dir
 
-def save_checkpoint(result_dir, uptake, adsorption_energy, molecule_list, iteration = None, initialize = False):
+def save_checkpoint(result_dir, stats, molecule_list, iteration, initialize = False):    
     tag = 'initialization_' if initialize else ''
-    np.save(os.path.join(result_dir, f"{tag}uptake.npy"), np.array(uptake))
-    np.save(os.path.join(result_dir, f"{tag}adsorption_energy.npy"), np.array(adsorption_energy))
-    np.save(os.path.join(result_dir, "last_adsorbate_positions.npy"), molecule_list)
 
-    if iteration is not None and not initialize:
-        np.save(os.path.join(result_dir, f"adsorbate_{iteration + 1:010d}.npy"), molecule_list)
+    from ase.io import Trajectory
+    with Trajectory(os.path.join(result_dir, f"{tag}checkpoint.traj"), mode = 'w') as traj:
+        for atoms in molecule_list:
+            traj.write(atoms)
 
-def load_simulation_state(result_dir, initialize):
-    tag = 'initialization_' if initialize else ''
-    uptake = list(np.load(os.path.join(result_dir, f"{tag}uptake.npy")))
-    adsorption_energy = list(np.load(os.path.join(result_dir, f"{tag}adsorption_energy.npy")))
-    molecule_list = np.load(os.path.join(result_dir, "last_adsorbate_positions.npy"))
+    if not initialize:
+        np.save(os.path.join(result_dir, "stats.npy"), stats)
 
-    return uptake, len(uptake), adsorption_energy, molecule_list
+        os.makedirs(os.path.join(result_dir, "trajectories"), exist_ok = True)
+        with Trajectory(os.path.join(result_dir, "trajectories", f"movies_{iteration + 1:008d}.traj"), mode = 'w') as traj:
+            for atoms in molecule_list:
+                traj.write(atoms)
 
-def load_stats(result_dir):
-    def _load(filename):
-        path = os.path.join(result_dir, filename)
-        return list(np.load(path))
+def load_checkpoint(result_dir, initialize = False, continue_sim = False):
+    tag = '' if (not initialize and continue_sim) else 'initialization_'
 
-    accepted = _load("accepted.npy")
-    attempted = _load("attempted.npy")
+    if initialize and not continue_sim:
+        molecule_list = []
+    else:
+        from ase.io import Trajectory
+        traj_path = os.path.join(result_dir, f"{tag}checkpoint.traj")
+        if not os.path.exists(traj_path):
+            raise FileNotFoundError(f"Trajectory file does not exist: {traj_path}")
 
-    return accepted, attempted
+        with Trajectory(traj_path) as traj:
+            molecule_list = [atoms for atoms in traj]
 
-def save_stats(result_dir, accepted, attempted):
-    np.save(os.path.join(result_dir, "accepted.npy"), np.array(accepted))
-    np.save(os.path.join(result_dir, "attempted.npy"), np.array(attempted))
+    stats = {
+        'attempted': [0] * 4,
+        'accepted': [0] * 4,
+        'uptake': [],
+        'adsorption_energy': []
+    }
+
+    if continue_sim:
+        stats_path = os.path.join(result_dir, "stats.npy")
+        if not initialize:
+            if not os.path.exists(stats_path):
+                raise FileNotFoundError(f"Stats file does not exist: {stats_path}")
+            stats = np.load(stats_path, allow_pickle = True).item()
+        else:
+            if os.path.exists(stats_path):
+                raise NotImplementedError("The previous calculation was aborted during the production cycles! Cannot continue the initialization cycles.")
+  
+    return stats, molecule_list
