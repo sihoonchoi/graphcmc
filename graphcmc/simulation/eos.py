@@ -110,8 +110,9 @@ class PREOS(EOS):
            'scripts/data/critical_acentric.csv'
         """
         # Read the data file containing parameters for a number of selected compounds
-        fn = 'scripts/data/critical_acentric.csv'
-#        fn = pkg_resources.resource_filename(yaff.__name__, 'data/critical_acentric.csv')
+        from importlib.resources import files
+        from graphcmc import data
+        fn = files(data).joinpath('critical_acentric.csv')
         dtype=[('compound', 'S20'), ('mass', 'f8'), ('Tc', 'f8'), ('Pc', 'f8'), ('omega', 'f8')]
         data = np.genfromtxt(fn, dtype = dtype, delimiter = ',')
         # Select requested compound
