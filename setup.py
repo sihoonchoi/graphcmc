@@ -11,7 +11,9 @@ setup(
         'graphcmc.data': ['*']
     },
     install_requires = [
-        'fairchem-core==1.10.0',
-        'torch-scatter'
-    ]
+        'fairchem-core==1.10.0'
+    ],
+    extras_require = {
+        'scatter': ['torch-scatter']
+    }
 )
