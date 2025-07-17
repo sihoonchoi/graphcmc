@@ -3,8 +3,8 @@ import numpy as np
 from enum import Enum
 from ase import Atoms
 
-from graphcmc.utils.constants import BOLTZMANN
 from graphcmc.utils.math import _random_translation, _random_rotation, _random_position
+from graphcmc.utils.constants import J_TO_EV
 
 class MoveType(Enum):
     INSERTION = 0
@@ -43,8 +43,8 @@ class MoveExecutor:
         mol.set_positions(pos)
         old_atoms = self.frame + sum(self.molecule_list, Atoms())
         new_atoms = old_atoms + mol
-        dE = self.ff.get_potential_energy(new_atoms, old_atoms, self.energy, len(self.molecule_list)) - self.energy
-        prob = np.exp(-beta * dE) * self.V * beta * fugacity / (len(self.molecule_list) + 1)
+        dE = self.ff.get_energy_difference(new_atoms, old_atoms, len(self.molecule_list))
+        prob = np.exp(-beta * dE) * self.V * beta * fugacity / (len(self.molecule_list) + 1) * J_TO_EV
         if np.random.rand() < min(1.0, prob):
             self.molecule_list.append(mol)
             self.energy += dE
@@ -58,8 +58,8 @@ class MoveExecutor:
         idx = np.random.randint(len(self.molecule_list))
         removed = self.molecule_list.pop(idx)
         new_atoms = self.frame + sum(self.molecule_list, Atoms())
-        dE = self.ff.get_potential_energy(new_atoms, old_atoms, self.energy, idx) - self.energy
-        prob = np.exp(-beta * dE) * (len(self.molecule_list) + 1) / self.V / beta / fugacity
+        dE = self.ff.get_energy_difference(new_atoms, old_atoms, idx)
+        prob = np.exp(-beta * dE) * (len(self.molecule_list) + 1) / self.V / beta / fugacity / J_TO_EV
         if np.random.rand() < min(1.0, prob):
             self.energy += dE
             return 1
@@ -77,7 +77,7 @@ class MoveExecutor:
         mol.set_positions(pos)
         new_list = self.molecule_list[:idx] + [mol] + self.molecule_list[idx + 1:]
         new_atoms = self.frame + sum(new_list, Atoms())
-        dE = self.ff.get_potential_energy(new_atoms, old_atoms, self.energy, idx) - self.energy
+        dE = self.ff.get_energy_difference(new_atoms, old_atoms, idx)
         if np.random.rand() < min(1.0, np.exp(-beta * dE)):
             self.molecule_list[idx] = mol
             self.energy += dE
@@ -91,11 +91,11 @@ class MoveExecutor:
         idx = np.random.randint(len(self.molecule_list))
         mol = self.molecule_list[idx].copy()
         pos = mol.get_positions()
-        pos = _random_rotation(pos, self.cell)
+        pos = _random_rotation(pos)
         mol.set_positions(pos)
         new_list = self.molecule_list[:idx] + [mol] + self.molecule_list[idx + 1:]
         new_atoms = self.frame + sum(new_list, Atoms())
-        dE = self.ff.get_potential_energy(new_atoms, old_atoms, self.energy, idx) - self.energy
+        dE = self.ff.get_energy_difference(new_atoms, old_atoms, idx)
         if np.random.rand() < min(1.0, np.exp(-beta * dE)):
             self.molecule_list[idx] = mol
             self.energy += dE
@@ -108,7 +108,7 @@ class MoveExecutor:
         pos = _random_position(pos, self.cell)
         mol.set_positions(pos)
         new_atoms = self.frame + mol
-        dE = self.ff.get_potential_energy(new_atoms, self.frame, 0, 0)
+        dE = self.ff.get_energy_difference(new_atoms, self.frame, 0, 0)
         return dE
     
     def count_adsorbates(self):
