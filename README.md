@@ -26,8 +26,6 @@ The following GNN-based MLFFs trained on the ODAC23 dataset are supported via `f
 - EquiformerV2-S2EF-ODAC
 - EquiformerV2-Large-S2EF-ODAC
 
----
-
 ## Setting Up Your Development Environment
 
 To ensure reproducibility and consistency, we recommend using a Conda environment with Python 3.9.
