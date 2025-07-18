@@ -8,6 +8,7 @@ This repository houses Python scripts that enable GCMC simulations integrating a
 ## Dependencies
 - [fairchem-core==0.10.0](https://pypi.org/project/fairchem-core/1.10.0/)
 - `torch-scatter`
+- `torch-sparse`
 
 > **Note**: `graphcmc` currently depends on `fairchem-core==0.10.0` and does not yet support models introduced in `fairchem-core v2`. Support for newer versions is planned. Stay tuned for updates!
 
@@ -42,7 +43,7 @@ cd graphcmc
 Run the following command to install `graphcmc` with extra dependencies:
 
 ```bash
-pip install -e .[scatter]
+pip install -e .[torch-extensions]
 ```
 
 ## Running GCMC Calculations
