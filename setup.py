@@ -14,6 +14,9 @@ setup(
         'fairchem-core==1.10.0'
     ],
     extras_require = {
-        'scatter': ['torch-scatter']
+        'torch-extensions': [
+            'torch-scatter',
+            'torch-sparse'
+        ],
     }
 )
