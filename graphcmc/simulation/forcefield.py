@@ -152,12 +152,12 @@ class HybridForceField(ClassicalForceField):
     def _ml(self, atoms, i_ads):
         temp_ads = atoms[self.n_frame_atoms + i_ads * self.n_ads_atoms:
                          self.n_frame_atoms + (i_ads + 1) * self.n_ads_atoms].copy()
-        temp_ads.set_cell(self.atoms_frame.cell)
-        adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.atoms_frame.cell
+        temp_ads.set_cell(self.frame.cell)
+        adjusted_pos = (temp_ads.get_scaled_positions() % 1) @ self.frame.cell
         temp_ads.set_positions(adjusted_pos)
         temp_ads.set_pbc([True, True, True])
 
-        total_atoms = self.atoms_frame.copy() + temp_ads
+        total_atoms = self.frame.copy() + temp_ads
         total_atoms.calc = self.model
 
         return total_atoms.get_potential_energy()
