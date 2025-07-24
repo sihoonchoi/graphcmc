@@ -48,7 +48,7 @@ pip install -e .[torch-extensions]
 
 ## Running GCMC Calculations
 
-Please refer to the [tutorial](example/tutorial.ipynb) for detailed instructions on running GCMC calculations using `graphcmc`.
+Please refer to the [tutorial](examples/tutorial.ipynb) for detailed instructions on running GCMC calculations using `graphcmc`.
 
 ## Acknowledgements
 
