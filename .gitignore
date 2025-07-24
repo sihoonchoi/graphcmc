@@ -1,3 +1,4 @@
 **/__pycache__/
 *.py[cod]
+graphcmc/example/.ipynb_checkpoints
 *.egg-info/
