@@ -54,4 +54,4 @@ Please refer to the [tutorial]() for detailed instructions on running GCMC calcu
 
 - The Ewald summation implementation is adapted from [VaspBandUnfolding](https://github.com/QijingZheng/VaspBandUnfolding).
 
-- The Peng-Robinson Equation of State part and associated critical property data are adapted from the work of [Goeminne *et al.*](https://doi.org/10.1021/acs.jctc.3c00495).
+- The Peng-Robinson Equation of State part and associated critical property data are adapted from the work of [Goeminne *et al*](https://doi.org/10.1021/acs.jctc.3c00495).
