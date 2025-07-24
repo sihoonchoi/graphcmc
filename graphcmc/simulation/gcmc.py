@@ -121,13 +121,12 @@ class GCMC:
 
             if (iteration + 1) % self.print_every == 0 and (iteration + 1) != N:
                 save_checkpoint(result_dir, stats, self.executor.molecule_list, iteration, initialize)
-                if not initialize and self.print_stats:
-                    self._print_stats(iteration, stats)
+                if self.print_stats:
+                    self._print_stats(iteration, stats, initialize)
 
-        else:
-            save_checkpoint(result_dir, stats, self.executor.molecule_list, iteration, initialize)
-            self._print_stats(iteration, stats)
-            print(self.output)
+        save_checkpoint(result_dir, stats, self.executor.molecule_list, iteration, initialize)
+        self._print_stats(iteration, stats, initialize)
+        print(self.output)
 
         return
 
@@ -141,8 +140,9 @@ class GCMC:
         result_dir = setup_result_directory(self.result_dir, self.job_id)
         np.save(f"{result_dir}/widom.npy", np.array(energies))
 
-    def _print_stats(self, iteration, stats):
-        self.output += f"Production cycle: {iteration + 1}\n\n"
+    def _print_stats(self, iteration, stats, initialize):
+        tag = 'Production' if not initialize else 'Initialization'
+        self.output += f"{tag} cycle: {iteration + 1}\n\n"
 
         moves = ['Insertion', 'Deletion', 'Translation', 'Rotation']
         for i, move in enumerate(moves):
